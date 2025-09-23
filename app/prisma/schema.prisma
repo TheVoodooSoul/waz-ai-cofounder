@@ -1,0 +1,290 @@
+// Waz AI Co-founder Platform Schema
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/waz_ai_cofounder/app/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  firstName     String?
+  lastName      String?
+  companyName   String?
+  focusArea     String?
+  password      String?
+  
+  // User preferences and learning data
+  preferences   Json?     // Stored as JSON for flexibility
+  learningData  Json?     // AI learning about user patterns
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  accounts        Account[]
+  sessions        Session[]
+  projects        Project[]
+  conversations   Conversation[]
+  victories       Victory[]
+  preferences_rel UserPreference[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Core Project Management
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  status      ProjectStatus @default(ACTIVE)
+  category    String?  // AI film, trading app, general app, etc.
+  
+  // Collaboration data
+  goals       String[] // Array of goals
+  milestones  Json?    // Milestone tracking
+  metadata    Json?    // Additional project data
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  conversations Conversation[]
+  victories     Victory[]
+  insights      ProjectInsight[]
+}
+
+enum ProjectStatus {
+  ACTIVE
+  COMPLETED
+  PAUSED
+  ARCHIVED
+}
+
+// Multi-Agent System
+model Conversation {
+  id          String   @id @default(cuid())
+  title       String?
+  agentType   AgentType
+  
+  // Conversation data
+  messages    Json     // Array of messages with roles, content, timestamps
+  context     Json?    // Conversation context and memory
+  summary     String?  // AI-generated summary
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum AgentType {
+  TECHNICAL    // Technical Waz: Architecture, coding, tech decisions
+  BUSINESS     // Business Waz: Strategy, market analysis, business models  
+  TREND        // Trend Waz: Market timing, pattern recognition, predictions
+  CREATIVE     // Creative Waz: AI film/art, innovative app concepts
+  GENERAL      // General Waz: Mixed capabilities
+}
+
+// Knowledge Base and Learning
+model AgentKnowledge {
+  id          String   @id @default(cuid())
+  agentType   AgentType
+  domain      String   // e.g., "react_patterns", "market_analysis", "user_preferences"
+  key         String   // Specific knowledge key
+  value       Json     // Knowledge content
+  confidence  Float?   // Confidence score for this knowledge
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([agentType, domain, key])
+}
+
+// User Preferences and Learning
+model UserPreference {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  category    String   // e.g., "tech_stack", "communication_style", "project_focus"
+  key         String   // Specific preference key
+  value       Json     // Preference value
+  weight      Float?   // Importance weight
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([userId, category, key])
+}
+
+// Victory and Celebration System
+model Victory {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  type        VictoryType
+  
+  // Victory details
+  impact      String?  // Description of impact/significance
+  metrics     Json?    // Quantifiable achievements
+  celebration Json?    // Celebration data and acknowledgments
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum VictoryType {
+  MILESTONE_COMPLETED
+  PROJECT_LAUNCHED
+  TECHNICAL_BREAKTHROUGH
+  BUSINESS_WIN
+  LEARNING_ACHIEVEMENT
+  COLLABORATION_SUCCESS
+}
+
+// Market Analysis and Trends
+model MarketInsight {
+  id          String   @id @default(cuid())
+  title       String
+  category    String   // e.g., "AI trends", "trading patterns", "market opportunities"
+  content     String
+  data        Json?    // Supporting data and analysis
+  confidence  Float?   // Confidence in this insight
+  
+  // Source and metadata
+  source      String?  // Where this insight came from
+  tags        String[] // Searchable tags
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Project-specific insights and learnings
+model ProjectInsight {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  title       String
+  content     String
+  type        InsightType
+  agentType   AgentType? // Which agent generated this insight
+  
+  data        Json?    // Supporting data
+  actionable  Boolean  @default(false) // Is this insight actionable?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum InsightType {
+  TECHNICAL_RECOMMENDATION
+  BUSINESS_OPPORTUNITY
+  MARKET_TIMING
+  CREATIVE_DIRECTION
+  RISK_ASSESSMENT
+  OPTIMIZATION_SUGGESTION
+}
+
+// Specialized Tools Data
+model AppConcept {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  category    String
+  
+  // Concept details
+  targetMarket String?
+  businessModel String?
+  techStack    String[]
+  features     Json?    // Feature breakdown
+  analysis     Json?    // Market and feasibility analysis
+  
+  userId      String   // Creator reference
+  status      ConceptStatus @default(IDEA)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum ConceptStatus {
+  IDEA
+  EVALUATING
+  APPROVED
+  IN_DEVELOPMENT
+  LAUNCHED
+  ARCHIVED
+}
+
+model TradingStrategy {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  type        String   // e.g., "day_trading", "swing", "algorithmic"
+  
+  // Strategy details
+  rules       Json     // Trading rules and conditions
+  backtest    Json?    // Backtesting results
+  performance Json?    // Live performance metrics
+  
+  userId      String   // Creator reference
+  active      Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
