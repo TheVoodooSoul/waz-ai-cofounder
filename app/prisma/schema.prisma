@@ -49,6 +49,13 @@ model User {
   focusArea     String?
   password      String?
   
+  // Admin and subscription controls
+  isAdmin       Boolean   @default(false)  // Admin gets unlimited access
+  planType      PlanType  @default(FREE)   // Subscription plan
+  planExpires   DateTime? // Plan expiration date
+  apiCallsUsed  Int       @default(0)      // Track API usage
+  apiCallsLimit Int       @default(10)     // Monthly limit (10 free calls)
+  
   // User preferences and learning data
   preferences   Json?     // Stored as JSON for flexibility
   learningData  Json?     // AI learning about user patterns
@@ -103,6 +110,14 @@ enum ProjectStatus {
   COMPLETED
   PAUSED
   ARCHIVED
+}
+
+enum PlanType {
+  FREE      // 10 free calls per month
+  BASIC     // 100 calls per month - $29/month
+  PRO       // 500 calls per month - $97/month  
+  UNLIMITED // Unlimited calls - $297/month
+  ADMIN     // Free unlimited access for platform owners
 }
 
 // Multi-Agent System

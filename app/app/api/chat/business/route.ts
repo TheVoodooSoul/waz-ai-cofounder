@@ -4,6 +4,7 @@ import { getAuth } from '../../../../lib/auth';
 import { prisma } from '../../../../lib/db';
 import { AgentType } from '../../../../lib/types';
 import { getAgentSystemPrompt } from '../../../../lib/agents';
+import { checkUsage, incrementUsage } from '../../../../lib/usage';
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,18 @@ export async function POST(req: NextRequest) {
     const session = await getAuth();
     if (!session?.user?.id) {
       return new Response('Unauthorized', { status: 401 });
+    }
+
+    // Check usage limits (admins get unlimited access)
+    const usageCheck = await checkUsage(session.user.id);
+    if (!usageCheck.allowed) {
+      return new Response(JSON.stringify({ 
+        error: usageCheck.reason,
+        usage: usageCheck.user 
+      }), { 
+        status: 429,  // Too Many Requests
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
     const { messages, conversationId, projectId } = await req.json();
@@ -79,6 +92,10 @@ export async function POST(req: NextRequest) {
                     AgentType.BUSINESS,
                     [...messages, { role: 'assistant', content: fullResponse }]
                   );
+                  
+                  // Increment usage (admins don't get charged)
+                  await incrementUsage(session.user.id);
+                  
                   return;
                 }
                 
