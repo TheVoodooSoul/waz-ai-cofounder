@@ -1,4 +1,3 @@
-// Waz AI Co-founder Platform Schema
 generator client {
     provider = "prisma-client-js"
     binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
@@ -16,15 +15,14 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -38,38 +36,31 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  firstName     String?
-  lastName      String?
-  companyName   String?
-  focusArea     String?
-  password      String?
-  
-  // Admin and subscription controls
-  isAdmin       Boolean   @default(false)  // Admin gets unlimited access
-  planType      PlanType  @default(FREE)   // Subscription plan
-  planExpires   DateTime? // Plan expiration date
-  apiCallsUsed  Int       @default(0)      // Track API usage
-  apiCallsLimit Int       @default(10)     // Monthly limit (10 free calls)
-  
-  // User preferences and learning data
-  preferences   Json?     // Stored as JSON for flexibility
-  learningData  Json?     // AI learning about user patterns
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
-  // Relations
+  id              String           @id @default(cuid())
+  name            String?
+  email           String?          @unique
+  emailVerified   DateTime?
+  image           String?
+  firstName       String?
+  lastName        String?
+  companyName     String?
+  focusArea       String?
+  password        String?
+  preferences     Json?
+  learningData    Json?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  apiCallsLimit   Int              @default(10)
+  apiCallsUsed    Int              @default(0)
+  isAdmin         Boolean          @default(false)
+  planExpires     DateTime?
+  planType        PlanType         @default(FREE)
   accounts        Account[]
-  sessions        Session[]
-  projects        Project[]
   conversations   Conversation[]
-  victories       Victory[]
+  projects        Project[]
+  sessions        Session[]
   preferences_rel UserPreference[]
+  victories       Victory[]
 }
 
 model VerificationToken {
@@ -80,29 +71,137 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// Core Project Management
 model Project {
+  id            String           @id @default(cuid())
+  name          String
+  description   String?
+  status        ProjectStatus    @default(ACTIVE)
+  category      String?
+  goals         String[]
+  milestones    Json?
+  metadata      Json?
+  userId        String
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  conversations Conversation[]
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  insights      ProjectInsight[]
+  victories     Victory[]
+}
+
+model Conversation {
+  id        String    @id @default(cuid())
+  title     String?
+  agentType AgentType
+  messages  Json
+  context   Json?
+  summary   String?
+  userId    String
+  projectId String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  project   Project?  @relation(fields: [projectId], references: [id])
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AgentKnowledge {
+  id         String    @id @default(cuid())
+  agentType  AgentType
+  domain     String
+  key        String
+  value      Json
+  confidence Float?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([agentType, domain, key])
+}
+
+model UserPreference {
+  id        String   @id @default(cuid())
+  userId    String
+  category  String
+  key       String
+  value     Json
+  weight    Float?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category, key])
+}
+
+model Victory {
+  id          String      @id @default(cuid())
+  title       String
+  description String
+  type        VictoryType
+  impact      String?
+  metrics     Json?
+  celebration Json?
+  userId      String
+  projectId   String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  project     Project?    @relation(fields: [projectId], references: [id])
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model MarketInsight {
+  id         String   @id @default(cuid())
+  title      String
+  category   String
+  content    String
+  data       Json?
+  confidence Float?
+  source     String?
+  tags       String[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model ProjectInsight {
+  id         String      @id @default(cuid())
+  projectId  String
+  title      String
+  content    String
+  type       InsightType
+  agentType  AgentType?
+  data       Json?
+  actionable Boolean     @default(false)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model AppConcept {
+  id            String        @id @default(cuid())
+  name          String
+  description   String
+  category      String
+  targetMarket  String?
+  businessModel String?
+  techStack     String[]
+  features      Json?
+  analysis      Json?
+  userId        String
+  status        ConceptStatus @default(IDEA)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model TradingStrategy {
   id          String   @id @default(cuid())
   name        String
-  description String?
-  status      ProjectStatus @default(ACTIVE)
-  category    String?  // AI film, trading app, general app, etc.
-  
-  // Collaboration data
-  goals       String[] // Array of goals
-  milestones  Json?    // Milestone tracking
-  metadata    Json?    // Additional project data
-  
+  description String
+  type        String
+  rules       Json
+  backtest    Json?
+  performance Json?
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  active      Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
-  // Relations
-  conversations Conversation[]
-  victories     Victory[]
-  insights      ProjectInsight[]
 }
 
 enum ProjectStatus {
@@ -113,94 +212,19 @@ enum ProjectStatus {
 }
 
 enum PlanType {
-  FREE      // 10 free calls per month
-  BASIC     // 100 calls per month - $29/month
-  PRO       // 500 calls per month - $97/month  
-  UNLIMITED // Unlimited calls - $297/month
-  ADMIN     // Free unlimited access for platform owners
-}
-
-// Multi-Agent System
-model Conversation {
-  id          String   @id @default(cuid())
-  title       String?
-  agentType   AgentType
-  
-  // Conversation data
-  messages    Json     // Array of messages with roles, content, timestamps
-  context     Json?    // Conversation context and memory
-  summary     String?  // AI-generated summary
-  
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  projectId   String?
-  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  FREE
+  BASIC
+  PRO
+  UNLIMITED
+  ADMIN
 }
 
 enum AgentType {
-  TECHNICAL    // Technical Waz: Architecture, coding, tech decisions
-  BUSINESS     // Business Waz: Strategy, market analysis, business models  
-  TREND        // Trend Waz: Market timing, pattern recognition, predictions
-  CREATIVE     // Creative Waz: AI film/art, innovative app concepts
-  GENERAL      // General Waz: Mixed capabilities
-}
-
-// Knowledge Base and Learning
-model AgentKnowledge {
-  id          String   @id @default(cuid())
-  agentType   AgentType
-  domain      String   // e.g., "react_patterns", "market_analysis", "user_preferences"
-  key         String   // Specific knowledge key
-  value       Json     // Knowledge content
-  confidence  Float?   // Confidence score for this knowledge
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  @@unique([agentType, domain, key])
-}
-
-// User Preferences and Learning
-model UserPreference {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  category    String   // e.g., "tech_stack", "communication_style", "project_focus"
-  key         String   // Specific preference key
-  value       Json     // Preference value
-  weight      Float?   // Importance weight
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  @@unique([userId, category, key])
-}
-
-// Victory and Celebration System
-model Victory {
-  id          String   @id @default(cuid())
-  title       String
-  description String
-  type        VictoryType
-  
-  // Victory details
-  impact      String?  // Description of impact/significance
-  metrics     Json?    // Quantifiable achievements
-  celebration Json?    // Celebration data and acknowledgments
-  
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  projectId   String?
-  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  TECHNICAL
+  BUSINESS
+  TREND
+  CREATIVE
+  GENERAL
 }
 
 enum VictoryType {
@@ -212,41 +236,6 @@ enum VictoryType {
   COLLABORATION_SUCCESS
 }
 
-// Market Analysis and Trends
-model MarketInsight {
-  id          String   @id @default(cuid())
-  title       String
-  category    String   // e.g., "AI trends", "trading patterns", "market opportunities"
-  content     String
-  data        Json?    // Supporting data and analysis
-  confidence  Float?   // Confidence in this insight
-  
-  // Source and metadata
-  source      String?  // Where this insight came from
-  tags        String[] // Searchable tags
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-// Project-specific insights and learnings
-model ProjectInsight {
-  id          String   @id @default(cuid())
-  projectId   String
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
-  title       String
-  content     String
-  type        InsightType
-  agentType   AgentType? // Which agent generated this insight
-  
-  data        Json?    // Supporting data
-  actionable  Boolean  @default(false) // Is this insight actionable?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
 enum InsightType {
   TECHNICAL_RECOMMENDATION
   BUSINESS_OPPORTUNITY
@@ -256,27 +245,6 @@ enum InsightType {
   OPTIMIZATION_SUGGESTION
 }
 
-// Specialized Tools Data
-model AppConcept {
-  id          String   @id @default(cuid())
-  name        String
-  description String
-  category    String
-  
-  // Concept details
-  targetMarket String?
-  businessModel String?
-  techStack    String[]
-  features     Json?    // Feature breakdown
-  analysis     Json?    // Market and feasibility analysis
-  
-  userId      String   // Creator reference
-  status      ConceptStatus @default(IDEA)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
 enum ConceptStatus {
   IDEA
   EVALUATING
@@ -284,22 +252,4 @@ enum ConceptStatus {
   IN_DEVELOPMENT
   LAUNCHED
   ARCHIVED
-}
-
-model TradingStrategy {
-  id          String   @id @default(cuid())
-  name        String
-  description String
-  type        String   // e.g., "day_trading", "swing", "algorithmic"
-  
-  // Strategy details
-  rules       Json     // Trading rules and conditions
-  backtest    Json?    // Backtesting results
-  performance Json?    // Live performance metrics
-  
-  userId      String   // Creator reference
-  active      Boolean  @default(false)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 }
