@@ -1,0 +1,116 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input { width: 100%; padding: 10px; margin-bottom: 10px; }
+        button { padding: 10px 20px; background: #0066cc; color: white; border: none; cursor: pointer; }
+        .result { margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 5px; }
+        .error { background: #ffeeee; border: 1px solid #cc0000; }
+        .success { background: #eeffee; border: 1px solid #00cc00; }
+    </style>
+</head>
+<body>
+    <h1>Login Debug Test</h1>
+    
+    <div class="form-group">
+        <label>Email:</label>
+        <input type="email" id="email" value="john@doe.com" />
+    </div>
+    
+    <div class="form-group">
+        <label>Password:</label>
+        <input type="password" id="password" value="password123" />
+    </div>
+    
+    <button onclick="testLogin()">Test Login</button>
+    <button onclick="checkSession()">Check Session</button>
+    <button onclick="testAuthEndpoint()">Test Auth Endpoint</button>
+    
+    <div id="result" class="result"></div>
+
+    <script>
+        async function testLogin() {
+            const result = document.getElementById('result');
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                result.innerHTML = 'Testing login...';
+                
+                // First test the credentials endpoint directly
+                const response = await fetch('/api/auth/callback/credentials', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        email: email,
+                        password: password,
+                        csrfToken: await getCsrfToken()
+                    })
+                });
+                
+                const data = await response.text();
+                
+                if (response.ok) {
+                    result.className = 'result success';
+                    result.innerHTML = `✅ Login successful!<br><pre>${data}</pre>`;
+                } else {
+                    result.className = 'result error';
+                    result.innerHTML = `❌ Login failed (${response.status})<br><pre>${data}</pre>`;
+                }
+                
+            } catch (error) {
+                result.className = 'result error';
+                result.innerHTML = `❌ Error: ${error.message}`;
+            }
+        }
+        
+        async function checkSession() {
+            const result = document.getElementById('result');
+            
+            try {
+                const response = await fetch('/api/auth/session');
+                const session = await response.json();
+                
+                result.className = 'result';
+                result.innerHTML = `Session: <pre>${JSON.stringify(session, null, 2)}</pre>`;
+                
+            } catch (error) {
+                result.className = 'result error';
+                result.innerHTML = `❌ Session check failed: ${error.message}`;
+            }
+        }
+        
+        async function testAuthEndpoint() {
+            const result = document.getElementById('result');
+            
+            try {
+                const response = await fetch('/api/auth/providers');
+                const providers = await response.json();
+                
+                result.className = 'result';
+                result.innerHTML = `Auth Providers: <pre>${JSON.stringify(providers, null, 2)}</pre>`;
+                
+            } catch (error) {
+                result.className = 'result error';
+                result.innerHTML = `❌ Auth endpoint test failed: ${error.message}`;
+            }
+        }
+        
+        async function getCsrfToken() {
+            const response = await fetch('/api/auth/csrf');
+            const data = await response.json();
+            return data.csrfToken;
+        }
+        
+        // Check session on load
+        window.addEventListener('load', checkSession);
+    </script>
+</body>
+</html>
