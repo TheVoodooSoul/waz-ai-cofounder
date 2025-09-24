@@ -21,3 +21,8 @@ out
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Force npm instead of yarn on Vercel
+app/.yarnrc.yml*
+app/.yarn/
+app/yarn.lock
