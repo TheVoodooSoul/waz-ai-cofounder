@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 // This is a temporary debug endpoint - REMOVE IN PRODUCTION
+// Force deployment timestamp: 1758934418
 export async function GET(request: NextRequest) {
   // Security check - only allow if admin query param is provided
   const { searchParams } = new URL(request.url);
