@@ -64,8 +64,15 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("Signup error:", error);
+    
+    // Return detailed error for debugging (REMOVE IN FINAL PRODUCTION)
     return NextResponse.json(
-      { error: "Internal server error" },
+      { 
+        error: "Signup failed", 
+        details: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     );
   }
